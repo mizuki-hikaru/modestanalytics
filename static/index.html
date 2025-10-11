@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Modest Analytics</title>
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; margin: 2rem; }
+    .container { max-width: 640px; margin: 0 auto; }
+    h1 { font-size: 1.75rem; }
+    form { display: flex; gap: .5rem; margin-top: 1rem; }
+    input[type=email] { flex: 1; padding: .7rem .8rem; font-size: 1rem; }
+    button { padding: .7rem 1rem; font-size: 1rem; cursor: pointer; }
+    .note { color: #555; margin-top: .75rem; }
+
+    .modal { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,.35); }
+    .modal.open { display: flex; }
+    .card { background: white; padding: 1.2rem; border-radius: 12px; width: min(560px, 92vw); box-shadow: 0 10px 30px rgba(0,0,0,.15); }
+    .row { display: flex; gap: .5rem; margin-top: .5rem; }
+    input[type=text], input[type=number] { width: 100%; padding: .6rem .7rem; font-size: 1rem; }
+    pre { background: #0f172a; color: #e2e8f0; padding: .8rem; border-radius: 8px; overflow: auto; }
+    .muted { color: #666; font-size: .9rem; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Modest Analytics</h1>
+    <p>Paste a tiny snippet on your site to track pageviews. Weekly email summaries every Saturday.</p>
+
+    <form id="register-form">
+      <input id="email" type="email" placeholder="you@example.com" required />
+      <button type="submit">Get 6‑digit code</button>
+    </form>
+    <p class="note">We’ll email you a one‑time 6‑digit code (expires in 10 minutes).</p>
+
+    <!-- Verify modal -->
+    <div id="verify-modal" class="modal" role="dialog" aria-modal="true">
+      <div class="card">
+        <h2>Enter your 6‑digit code</h2>
+        <p class="muted">We sent it to <span id="vm-email"></span></p>
+        <div class="row">
+          <input id="code" type="text" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" placeholder="123456" required />
+        </div>
+        <div class="row" style="justify-content: flex-end;">
+          <button id="verify-btn">Verify</button>
+          <button id="cancel-verify" type="button">Cancel</button>
+        </div>
+        <p id="verify-error" class="muted" style="color:#b91c1c; display:none"></p>
+      </div>
+    </div>
+
+    <!-- Snippet modal -->
+    <div id="snippet-modal" class="modal" role="dialog" aria-modal="true">
+      <div class="card">
+        <h2>Your install snippet</h2>
+        <p class="muted">Add this to the <code>&lt;head&gt;</code> of every page.</p>
+        <pre id="snippet-pre"></pre>
+        <div class="row" style="justify-content: flex-end;">
+          <button id="copy-btn" type="button">Copy</button>
+          <button id="close-snippet" type="button">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const $ = (sel) => document.querySelector(sel);
+    const byId = (id) => document.getElementById(id);
+
+    const verifyModal = byId('verify-modal');
+    const snippetModal = byId('snippet-modal');
+
+    function openModal(el){ el.classList.add('open'); }
+    function closeModal(el){ el.classList.remove('open'); }
+
+    byId('register-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = byId('email').value.trim();
+      if(!email) return;
+      try {
+        const res = await fetch('/register', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email })
+        });
+        if(!res.ok) throw new Error('Failed to send verification email');
+        byId('vm-email').textContent = email;
+        openModal(verifyModal);
+      } catch (err) {
+        alert(err.message || 'Something went wrong');
+      }
+    });
+
+    byId('cancel-verify').addEventListener('click', () => closeModal(verifyModal));
+
+    byId('verify-btn').addEventListener('click', async () => {
+      const email = byId('vm-email').textContent;
+      const code = byId('code').value.trim();
+      if(code.length !== 6) { byId('verify-error').textContent = 'Enter the 6‑digit code.'; byId('verify-error').style.display='block'; return; }
+      byId('verify-error').style.display='none';
+      try {
+        const res = await fetch('/verify', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, code })
+        });
+        if(!res.ok){
+          const data = await res.json().catch(()=>({detail:'Verification failed'}));
+          throw new Error(data.detail || 'Verification failed');
+        }
+        const data = await res.json();
+        const snippet = data.snippet;
+        byId('snippet-pre').textContent = snippet;
+        closeModal(verifyModal);
+        openModal(snippetModal);
+      } catch (err){
+        byId('verify-error').textContent = err.message || 'Verification failed';
+        byId('verify-error').style.display='block';
+      }
+    });
+
+    byId('close-snippet').addEventListener('click', () => closeModal(snippetModal));
+
+    byId('copy-btn').addEventListener('click', async () => {
+      const code = byId('snippet-pre').textContent;
+      try { await navigator.clipboard.writeText(code); alert('Snippet copied!'); }
+      catch { alert('Copy failed. Manually select and copy.'); }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,56 @@
+I would like to make a website that allows people to register their email address and then include a snippet of JavaScript on their website that tracks how many visits each page gets. Then, every week on Saturday, an email should be sent to the user with the total statistics about their website and the visitor counts for each page.
+
+The user should enter their email address, then see a pop-up modal prompting to enter a six digit code we will send to their email address. Then, once a successful code is entered, another modal should pop up with the javascript snippet to include on their websites. The snippet of JavaScript should be minimal and load the business logic from https://modestanalytics.com/embed.js. The one-time 6 digit code should expire in 10 minutes from when they trigger the verification email to be sent.
+
+To preserve privacy, the snippet of JavaScript won't contain the user's email address. Instead it will contain a 128 bit urlsafe token (made with Python's secrets module) that we use to identify the user, here referred to as the "token".
+
+The webapp framework to use for the backend should be FastAPI with uvicorn and the database should be sqlite3 wrapped with SQLAlchemy.
+
+The database should include two tables.
+
+The first table should be "users" and contain id (integer primary key), email address, token, verification_code, and verification_code_expiry. It should be indexed on email address, and indexed separately on token.
+
+The second table should be "pageviews" and contain id (integer primary key), user (foreign key reference to user), timestamp, domain, and path.
+
+The emails for the verification code and pageview summaries should be sent with SMTP. The settings SMTP_HOST, SMTP_PORT, SMTP_USERNAME, and SMTP_PASSWORD should exist in smtp_settings.py. Emails should be sent with Python's smtplib.SMTP_SSL class.
+
+There should be an endpoint for recording a new pageview (which is submitted by the JavaScript snippet). This request should be a POST request and include token, domain, and path. The backend should then look up the relevant user and create a new entry in the "pageviews" table, including timestamp.
+
+The server should serve up index.html at the / route.
+
+Please generate three files: server.py, smtp_settings.py, and index.html
+
+---
+
+It says:
+
+        on_event is deprecated, use lifespan event handlers instead.
+
+Can you modify the server code to use lifespan event handlers instead?
+
+---
+
+This part is unnecessary since SQLAlchemy creates the table indexes automatically:
+
+    __table_args__ = (
+        Index("ix_users_email", "email"),
+        Index("ix_users_token", "token"),
+    )
+
+Can you please remove it?
+
+---
+
+Can you also please generate embed.js?
+
+---
+
+We've exceeded the maximum document length. Can you please show me embed.js and only embed.js?
+
+---
+
+Is there any JS that can detect the current domain?
+
+---
+
+Yes, please detect the domain in embed.js instead of asking the user to replace YOUR_DOMAIN with their domain.
