@@ -50,3 +50,11 @@ We've exceeded the maximum document length. Can you please show me embed.js and 
 ---
 
 In the verify endpoint I'm getting error TypeError: can't compare offset-naive and offset-aware datetimes. I think we have to add a timezone after extracting from the database but I'm not sure.
+
+---
+
+Can you please add a loading modal with a little spinner and translucent backdrop to index.html to demonstrate loading for the /register call? Output index.html and only index.html
+
+---
+
+Sorry when I said translucent I meant blurry background.
