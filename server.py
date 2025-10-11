@@ -90,7 +90,6 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="Modest Analytics", lifespan=lifespan)
 
 # Serve static files and allow CORS
-app.mount("/", StaticFiles(directory="static", html=True), name="static")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -140,10 +139,11 @@ def send_email(to_email: str, subject: str, body_text: str, body_html: Optional[
     else:
         msg.set_content(body_text)
 
-    context = ssl.create_default_context()
-    with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, context=context) as server:
-        if SMTP_USERNAME or SMTP_PASSWORD:
-            server.login(SMTP_USERNAME, SMTP_PASSWORD)
+    with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
+        server.ehlo()
+        server.starttls()
+        server.ehlo()
+        server.login(SMTP_USERNAME, SMTP_PASSWORD)
         server.send_message(msg)
 
 # ----------------------
@@ -162,12 +162,17 @@ def issue_verification_code(db: Session, user: User) -> str:
 def generate_token() -> str:
     return secrets.token_urlsafe(16)
 
+def as_aware_utc(dt: datetime | None) -> datetime | None:
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        # Treat naive values as UTC (how we stored them)
+        return dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
+
 # ----------------------
 # Routes
 # ----------------------
-@app.get("/")
-async def root_index():
-    return FileResponse("index.html")
 
 @app.post("/register")
 async def register(req: RegisterRequest, db: Session = Depends(get_db)):
@@ -185,7 +190,8 @@ async def register(req: RegisterRequest, db: Session = Depends(get_db)):
 
     try:
         send_email(email, "Your Modest Analytics verification code", body_text, body_html)
-    except Exception:
+    except Exception as e:
+        print(e)
         raise HTTPException(status_code=500, detail="Failed to send verification email.")
 
     return {"message": "Verification code sent."}
@@ -198,7 +204,7 @@ async def verify(req: VerifyRequest, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="No verification pending for this email.")
 
     now = datetime.now(timezone.utc)
-    if not user.verification_code_expiry or now > user.verification_code_expiry:
+    if not user.verification_code_expiry or now > as_aware_utc(user.verification_code_expiry):
         raise HTTPException(status_code=400, detail="Verification code expired. Please request a new one.")
 
     if req.code.strip() != user.verification_code:
@@ -225,6 +231,8 @@ async def record_pageview(req: PageviewRequest, db: Session = Depends(get_db)):
     db.add(pv)
     db.commit()
     return {"status": "ok"}
+
+app.mount("/", StaticFiles(directory="static", html=True), name="static")
 
 # ----------------------
 # Weekly digest

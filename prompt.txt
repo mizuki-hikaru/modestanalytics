@@ -54,3 +54,7 @@ Is there any JS that can detect the current domain?
 ---
 
 Yes, please detect the domain in embed.js instead of asking the user to replace YOUR_DOMAIN with their domain.
+
+---
+
+In the verify endpoint I'm getting error TypeError: can't compare offset-naive and offset-aware datetimes. I think we have to add a timezone after extracting from the database but I'm not sure.
