@@ -65,11 +65,11 @@ def scheduler_loop():
     sent_today = False
     while True:
         now = datetime.now()
-        if now.weekday() == 5 and now.hour == 9 and now.minute == 0:
+        if now.weekday() == 5 and now.hour == 9:
             if not sent_today:
                 send_all_digests()
                 sent_today = True
-        elif now.weekday() != 5 or now.hour != 9:
+        else:
             sent_today = False
         time.sleep(60)
 
