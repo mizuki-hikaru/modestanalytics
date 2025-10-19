@@ -239,29 +239,66 @@ app.mount("/", StaticFiles(directory="static", html=True), name="static")
 # ----------------------
 
 def build_digest(db: Session, user: User) -> tuple[str, str]:
-    rows = db.query(Pageview.domain, Pageview.path).filter(Pageview.user_id == user.id).all()
+    """
+    Build a weekly digest for the *last 7 days* in the server's local timezone.
+    """
+    # Use local timezone rather than UTC
+    local_tz = datetime.now().astimezone().tzinfo
+    now = datetime.now()
+    start = now - timedelta(days=7)
+
+    rows = (
+        db.query(Pageview.domain, Pageview.path)
+        .filter(
+            Pageview.user_id == user.id,
+            Pageview.timestamp >= start,
+            Pageview.timestamp < now,
+        )
+        .all()
+    )
+
     total = len(rows)
-    counts = {}
+
+    # Aggregate per (domain, path)
+    counts: dict[tuple[str, str], int] = {}
     for d, p in rows:
         key = (d or "", p or "")
         counts[key] = counts.get(key, 0) + 1
 
-    lines = [f"Total pageviews (all time): {total}", "", "Per page:"]
-    for (d, p), c in sorted(counts.items(), key=lambda x: (-x[1], x[0])):
+    period_str = f"{start.strftime('%Y-%m-%d')} → {now.strftime('%Y-%m-%d')} ({local_tz})"
+
+    sorted_results = sorted(counts.items(), key=lambda x: (-x[1], x[0]))
+
+    # Text version
+    lines = [
+        "Your weekly website stats",
+        f"Period: {period_str}",
+        f"Total pageviews (last 7 days): {total}",
+        "",
+        "Per page:",
+    ]
+    for (d, p), c in sorted_results:
         lines.append(f"- {d}{p} — {c}")
     text = "\n".join(lines)
 
+    # HTML version
     html_rows = "".join(
-        f"<tr><td>{d}</td><td>{p}</td><td style='text-align:right'>{c}</td></tr>" for (d, p), c in sorted(counts.items(), key=lambda x: (-x[1], x[0]))
+        f"<tr><td>{d}</td><td>{p}</td><td style='text-align:right'>{c}</td></tr>"
+        for (d, p), c in sorted_results
     )
+    if not html_rows:
+        html_rows = "<tr><td colspan='3'>No data in the last 7 days</td></tr>"
+
     html = f"""
     <h2>Your weekly website stats</h2>
-    <p><strong>Total pageviews (all time):</strong> {total}</p>
+    <p><strong>Period:</strong> {period_str}</p>
+    <p><strong>Total pageviews (last 7 days):</strong> {total}</p>
     <table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse">
       <thead><tr><th>Domain</th><th>Path</th><th>Views</th></tr></thead>
-      <tbody>{html_rows or '<tr><td colspan="3">No data yet</td></tr>'}</tbody>
+      <tbody>{html_rows}</tbody>
     </table>
     """
+
     return text, html
 
 def send_all_digests():
