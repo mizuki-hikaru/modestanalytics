@@ -11,48 +11,10 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, EmailStr
-from sqlalchemy import (
-    create_engine, Column, Integer, String, DateTime, ForeignKey
-)
-from sqlalchemy.orm import sessionmaker, declarative_base, relationship, Session
+from sqlalchemy.orm import Session
 
 from smtp_settings import SMTP_HOST, SMTP_PORT, SMTP_USERNAME, SMTP_PASSWORD, SMTP_FROM
-
-# ----------------------
-# Database setup
-# ----------------------
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./analytics.db")
-engine = create_engine(
-    DATABASE_URL, connect_args={"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
-)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-Base = declarative_base()
-
-
-class User(Base):
-    __tablename__ = "users"
-    id = Column(Integer, primary_key=True)
-    email = Column(String, index=True, nullable=False)
-    token = Column(String, index=True, nullable=False)
-    verification_code = Column(String, nullable=True)
-    verification_code_expiry = Column(DateTime, nullable=True)
-
-    pageviews = relationship("Pageview", back_populates="user")
-
-
-class Pageview(Base):
-    __tablename__ = "pageviews"
-    id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    timestamp = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
-    domain = Column(String, nullable=False)
-    path = Column(String, nullable=False)
-
-    user = relationship("User", back_populates="pageviews")
-
-
-Base.metadata.create_all(bind=engine)
-
+from db import SessionLocal, User, Pageview, get_db
 
 # ----------------------
 # Scheduler setup
@@ -99,17 +61,6 @@ app.add_middleware(
 )
 
 # ----------------------
-# Dependency
-# ----------------------
-
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-# ----------------------
 # Schemas
 # ----------------------
 class RegisterRequest(BaseModel):
@@ -123,6 +74,8 @@ class PageviewRequest(BaseModel):
     token: str
     domain: str
     path: str
+    referrer: str
+    time_spent_on_page: int
 
 # ----------------------
 # Email helpers
@@ -227,7 +180,7 @@ async def record_pageview(req: PageviewRequest, db: Session = Depends(get_db)):
     if not user:
         raise HTTPException(status_code=404, detail="Unknown token.")
 
-    pv = Pageview(user_id=user.id, domain=req.domain.strip()[:255], path=req.path.strip()[:512])
+    pv = Pageview(user_id=user.id, domain=req.domain.strip()[:255], path=req.path.strip()[:512], referrer=req.referrer.strip()[:1024], time_spent_on_page=req.time_spent_on_page)
     db.add(pv)
     db.commit()
     return {"status": "ok"}
@@ -248,7 +201,7 @@ def build_digest(db: Session, user: User) -> tuple[str, str]:
     start = now - timedelta(days=7)
 
     rows = (
-        db.query(Pageview.domain, Pageview.path)
+        db.query(Pageview.domain, Pageview.path, Pageview.referrer, Pageview.time_spent_on_page)
         .filter(
             Pageview.user_id == user.id,
             Pageview.timestamp >= start,
@@ -261,13 +214,35 @@ def build_digest(db: Session, user: User) -> tuple[str, str]:
 
     # Aggregate per (domain, path)
     counts: dict[tuple[str, str], int] = {}
-    for d, p in rows:
+    referrer_per_page: dict[tuple[str, str], dict[str, int]] = {}
+    time_spent_on_page_totals: dict[tuple[str, str], list[int]] = {}
+
+    for d, p, r, t in rows:
         key = (d or "", p or "")
         counts[key] = counts.get(key, 0) + 1
+
+        if r:
+           if key not in referrer_per_page:
+                referrer_per_page[key] = {}
+            referrer_per_page[key][r] = referrer_per_page[key].get(r, 0) + 1
+
+        if key not in time_spent_on_page_totals:
+            time_spent_on_page_totals[key] = []
+        time_spent_on_page_totals[key].append(t)
 
     period_str = f"{start.strftime('%Y-%m-%d')} → {now.strftime('%Y-%m-%d')} ({local_tz})"
 
     sorted_results = sorted(counts.items(), key=lambda x: (-x[1], x[0]))
+
+    # Calculate top referrer per (domain, path)
+    top_referrer_per_page: dict[tuple[str, str], str] = {}
+    for key, referrers in referrer_per_page.items():
+        top_referrer_per_page[key] = max(referrers, key=referrers.get)
+
+    # Calculate average time spent on page per (domain, path)
+    average_time_spent_on_page: dict[tuple[str, str], int] = {}
+    for key, times in time_spent_on_page_totals.items():
+        average_time_spent_on_page[key] = sum(times) / len(times)
 
     # Text version
     lines = [
@@ -278,23 +253,25 @@ def build_digest(db: Session, user: User) -> tuple[str, str]:
         "Per page:",
     ]
     for (d, p), c in sorted_results:
-        lines.append(f"- {d}{p} — {c}")
+        avg_time = average_time_spent_on_page.get((d, p), 0)
+        top_ref = top_referrer_per_page.get((d, p), "N/A")
+        lines.append(f"- {d}{p} — {c} views, avg time: {avg_time}s, top referrer: {top_ref}")
     text = "\n".join(lines)
 
     # HTML version
     html_rows = "".join(
-        f"<tr><td>{d}</td><td>{p}</td><td style='text-align:right'>{c}</td></tr>"
+        f"<tr><td>{d}</td><td>{p}</td><td style='text-align:right'>{c}</td><td style='text-align:right'>{average_time_spent_on_page.get((d, p), 0)}s</td><td>{top_referrer_per_page.get((d, p), "N/A")}</td></tr>"
         for (d, p), c in sorted_results
     )
     if not html_rows:
-        html_rows = "<tr><td colspan='3'>No data in the last 7 days</td></tr>"
+        html_rows = "<tr><td colspan='5'>No data in the last 7 days</td></tr>"
 
     html = f"""
     <h2>Your weekly website stats</h2>
     <p><strong>Period:</strong> {period_str}</p>
     <p><strong>Total pageviews (last 7 days):</strong> {total}</p>
     <table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse">
-      <thead><tr><th>Domain</th><th>Path</th><th>Views</th></tr></thead>
+      <thead><tr><th>Domain</th><th>Path</th><th>Views</th><th>Avg. Time</th><th>Top Referrer</th></tr></thead>
       <tbody>{html_rows}</tbody>
     </table>
     """

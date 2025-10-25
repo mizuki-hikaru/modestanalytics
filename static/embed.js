@@ -24,76 +24,45 @@
       }
     }
 
-    var lastSent = '';
-    function sendPageview() {
+    var startTime = Date.now(); // Record start time when script loads
+    var initialReferrer = document.referrer || ''; // Record initial referrer, default to empty string
+
+    function sendPageviewOnUnload() {
       var loc = window.location || {};
       var domain = loc.hostname || '';
       var path = pathWithQuery(loc);
-      var key = domain + ' ' + path;
-      if (key === lastSent) return;
-      lastSent = key;
+      var timeSpentOnPage = Math.round((Date.now() - startTime) / 1000); // Time in seconds, always a number
 
-      var payload = JSON.stringify({ token: token, domain: domain, path: path });
+      var payload = JSON.stringify({
+        token: token,
+        domain: domain,
+        path: path,
+        referrer: initialReferrer,
+        time_spent_on_page: timeSpentOnPage
+      });
 
       if (navigator && typeof navigator.sendBeacon === 'function') {
         try {
           var blob = new Blob([payload], { type: 'application/json' });
-          var ok = navigator.sendBeacon(endpoint, blob);
-          if (ok) return;
+          navigator.sendBeacon(endpoint, blob);
+        } catch (_) {}
+      } else {
+        // Fallback for browsers that don't support sendBeacon
+        try {
+          fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: payload,
+            keepalive: true,
+            mode: 'cors',
+            credentials: 'omit'
+          }).catch(function () {});
         } catch (_) {}
       }
-
-      try {
-        fetch(endpoint, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: payload,
-          keepalive: true,
-          mode: 'cors',
-          credentials: 'omit'
-        }).catch(function () {});
-      } catch (_) {}
     }
 
-    if (document.readyState === 'complete' || document.readyState === 'interactive') {
-      setTimeout(sendPageview, 0);
-    } else {
-      document.addEventListener('DOMContentLoaded', sendPageview);
-    }
+    // Attach the event listener to send data when the page is about to be unloaded
+    window.addEventListener('beforeunload', sendPageviewOnUnload);
 
-    function hookHistory(methodName) {
-      try {
-        var orig = history[methodName];
-        if (typeof orig !== 'function') return;
-        history[methodName] = function () {
-          var ret = orig.apply(this, arguments);
-          try {
-            window.dispatchEvent(new Event('modestanalytics:navigation'));
-          } catch (_) {}
-          return ret;
-        };
-      } catch (_) {}
-    }
-
-    hookHistory('pushState');
-    hookHistory('replaceState');
-
-    var lastPath = pathWithQuery(window.location || {});
-    function maybeSendOnNav() {
-      var p = pathWithQuery(window.location || {});
-      if (p !== lastPath) {
-        lastPath = p;
-        sendPageview();
-      }
-    }
-
-    window.addEventListener('popstate', maybeSendOnNav);
-    window.addEventListener('modestanalytics:navigation', maybeSendOnNav);
-
-    document.addEventListener('visibilitychange', function () {
-      if (document.visibilityState === 'visible') {
-        maybeSendOnNav();
-      }
-    });
   } catch (_) {}
 })();
