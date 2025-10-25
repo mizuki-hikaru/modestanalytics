@@ -33,20 +33,19 @@
       var path = pathWithQuery(loc);
       var timeSpentOnPage = Math.round((Date.now() - startTime) / 1000); // Time in seconds, always a number
 
-      var payload = JSON.stringify({
-        token: token,
-        domain: domain,
-        path: path,
-        referrer: initialReferrer,
-        time_spent_on_page: timeSpentOnPage
-      });
+      var params = new URLSearchParams();
+      params.append('token', token);
+      params.append('domain', domain);
+      params.append('path', path);
+      params.append('referrer', initialReferrer);
+      params.append('time_spent_on_page', timeSpentOnPage);
 
       // Always use fetch with credentials: 'include' to ensure cookies are sent
       try {
         fetch(endpoint, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: payload,
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: params.toString(),
           keepalive: true,
           mode: 'cors',
           credentials: 'include'

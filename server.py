@@ -4,9 +4,9 @@ import smtplib
 import ssl
 from datetime import datetime, timedelta, timezone
 from email.message import EmailMessage
-from typing import Optional
+from typing import Annotated, Optional
 
-from fastapi import FastAPI, Depends, HTTPException, Request
+from fastapi import FastAPI, Depends, Form, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -69,13 +69,6 @@ class RegisterRequest(BaseModel):
 class VerifyRequest(BaseModel):
     email: EmailStr
     code: str
-
-class PageviewRequest(BaseModel):
-    token: str
-    domain: str
-    path: str
-    referrer: str
-    time_spent_on_page: int
 
 # ----------------------
 # Email helpers
@@ -185,13 +178,21 @@ async def verify(req: VerifyRequest, db: Session = Depends(get_db)):
     return response
 
 @app.post("/pageview")
-async def record_pageview(req: PageviewRequest, request: Request, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.token == req.token).first()
+async def record_pageview(
+    token: Annotated[str, Form()],
+    domain: Annotated[str, Form()],
+    path: Annotated[str, Form()],
+    referrer: Annotated[str, Form()],
+    time_spent_on_page: Annotated[int, Form()],
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    user = db.query(User).filter(User.token == token).first()
     if not user:
         raise HTTPException(status_code=404, detail="Unknown token.")
     if request.cookies.get("donttrack") == user.token:
         return {"status": "ok", "message": "Pageview not recorded due to donttrack flag."} # Do not track
-    pv = Pageview(user_id=user.id, domain=req.domain.strip()[:255], path=req.path.strip()[:512], referrer=req.referrer.strip()[:1024], time_spent_on_page=req.time_spent_on_page)
+    pv = Pageview(user_id=user.id, domain=domain.strip()[:255], path=path.strip()[:512], referrer=referrer.strip()[:1024], time_spent_on_page=time_spent_on_page)
     db.add(pv)
     db.commit()
     return {"status": "ok"}
