@@ -41,24 +41,17 @@
         time_spent_on_page: timeSpentOnPage
       });
 
-      if (navigator && typeof navigator.sendBeacon === 'function') {
-        try {
-          var blob = new Blob([payload], { type: 'application/json' });
-          navigator.sendBeacon(endpoint, blob);
-        } catch (_) {}
-      } else {
-        // Fallback for browsers that don't support sendBeacon
-        try {
-          fetch(endpoint, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: payload,
-            keepalive: true,
-            mode: 'cors',
-            credentials: 'omit'
-          }).catch(function () {});
-        } catch (_) {}
-      }
+      // Always use fetch with credentials: 'include' to ensure cookies are sent
+      try {
+        fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: payload,
+          keepalive: true,
+          mode: 'cors',
+          credentials: 'include'
+        }).catch(function () {});
+      } catch (_) {}
     }
 
     // Attach the event listener to send data when the page is about to be unloaded

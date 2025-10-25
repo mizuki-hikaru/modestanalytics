@@ -168,14 +168,27 @@ async def verify(req: VerifyRequest, db: Session = Depends(get_db)):
     db.add(user)
     db.commit()
 
-    snippet = (
+    js_snippet = (
         '<script src="https://modestanalytics.com/embed.js" '
         f'data-token="{user.token}"></script>'
     )
-    return {"snippet": snippet, "token": user.token}
+    response = JSONResponse(content={"snippet": js_snippet, "token": user.token})
+    response.set_cookie(
+        key="donttrack",
+        value="1",
+        max_age=3155760000,  # approx. 100 years
+        httponly=True,
+        samesite="none",
+        secure=True,
+        domain="modestanalytics.com" # TODO: make this configurable
+    )
+    return response
 
 @app.post("/pageview")
-async def record_pageview(req: PageviewRequest, db: Session = Depends(get_db)):
+async def record_pageview(req: PageviewRequest, request: Request, db: Session = Depends(get_db)):
+    if request.cookies.get("donttrack") == "1":
+        return {"status": "ok", "message": "Pageview not recorded due to donttrack flag."} # Do not track
+
     user = db.query(User).filter(User.token == req.token).first()
     if not user:
         raise HTTPException(status_code=404, detail="Unknown token.")
