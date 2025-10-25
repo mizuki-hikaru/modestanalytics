@@ -40,17 +40,21 @@
       params.append('referrer', initialReferrer);
       params.append('time_spent_on_page', timeSpentOnPage);
 
-      // Always use fetch with credentials: 'include' to ensure cookies are sent
-      try {
-        fetch(endpoint, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          body: params.toString(),
-          keepalive: true,
-          mode: 'cors',
-          credentials: 'include'
-        }).catch(function () {});
-      } catch (_) {}
+      // Try to use sendBeacon first
+      if (navigator.sendBeacon && navigator.sendBeacon(endpoint, params)) {
+        // Data successfully queued by sendBeacon
+      } else {
+        // sendBeacon not available or failed, use fetch as fallback
+        try {
+          fetch(endpoint, {
+            method: 'POST',
+            body: params,
+            keepalive: true,
+          }).catch(function () {});
+        } catch (e) {
+          // Fallback for older browsers that might not support fetch or sendBeacon
+        }
+      }
     }
 
     // Attach the event listener to send data when the page is about to be unloaded

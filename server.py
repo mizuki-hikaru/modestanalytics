@@ -165,17 +165,7 @@ async def verify(req: VerifyRequest, db: Session = Depends(get_db)):
         '<script src="https://modestanalytics.com/embed.js" '
         f'data-token="{user.token}"></script>'
     )
-    response = JSONResponse(content={"snippet": js_snippet, "token": user.token})
-    response.set_cookie(
-        key="donttrack",
-        value=user.token,
-        max_age=31536000,  # 1 year
-        httponly=True,
-        samesite="none",
-        secure=True,
-        domain="modestanalytics.com" # TODO: make this configurable
-    )
-    return response
+    return {"snippet": js_snippet, "token": user.token}
 
 @app.post("/pageview")
 async def record_pageview(
@@ -190,29 +180,12 @@ async def record_pageview(
     user = db.query(User).filter(User.token == token).first()
     if not user:
         raise HTTPException(status_code=404, detail="Unknown token.")
-    if request.cookies.get("donttrack") == user.token:
-        return {"status": "ok", "message": "Pageview not recorded due to donttrack flag."} # Do not track
     pv = Pageview(user_id=user.id, domain=domain.strip()[:255], path=path.strip()[:512], referrer=referrer.strip()[:1024], time_spent_on_page=time_spent_on_page)
     db.add(pv)
     db.commit()
     return {"status": "ok"}
 
-@app.get("/")
-async def read_index(request: Request):
-    response = FileResponse("static/index.html")
-    if "donttrack" in request.cookies:
-        response.set_cookie(
-            key="donttrack",
-            value=request.cookies["donttrack"],
-            max_age=31536000,  # 1 year
-            httponly=True,
-            samesite="none",
-            secure=True,
-            domain="modestanalytics.com",
-        )
-    return response
-
-app.mount("/", StaticFiles(directory="static"), name="static")
+app.mount("/", StaticFiles(directory="static", html=True), name="static")
 
 # ----------------------
 # Weekly digest
