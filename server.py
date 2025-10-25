@@ -211,7 +211,7 @@ async def read_index(request: Request):
         )
     return response
 
-app.mount("/static", StaticFiles(directory="static"), name="static")
+app.mount("/", StaticFiles(directory="static"), name="static")
 
 # ----------------------
 # Weekly digest
