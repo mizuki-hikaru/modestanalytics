@@ -19,11 +19,19 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     """Upgrade schema."""
-    op.add_column('pageviews', sa.Column('referrer', sa.String(), nullable=False), server_default="")
-    op.add_column('pageviews', sa.Column('time_spent_on_page', sa.Integer(), nullable=False, server_default=0))
+    op.add_column('pageviews', sa.Column('referrer', sa.String(), nullable=False, server_default=""))
+    op.add_column('pageviews', sa.Column('time_spent_on_page', sa.Integer(), nullable=False, server_default='0'))
     with op.batch_alter_table("pageviews") as batch_op:
-        batch_op.alter_column("referrer", server_default=None)
-        batch_op.alter_column("time_spent_on_page", server_default=None)
+      batch_op.alter_column(
+          "referrer",
+          server_default=None,
+          existing_type=sa.String(),
+      )
+      batch_op.alter_column(
+          "time_spent_on_page",
+          server_default=None,
+          existing_type=sa.Integer(),
+      )
 
 def downgrade() -> None:
     """Downgrade schema."""
