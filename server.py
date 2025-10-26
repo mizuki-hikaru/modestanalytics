@@ -274,12 +274,12 @@ def build_digest(db: Session, user: User) -> tuple[str, str]:
     for (d, p), c in sorted_results:
         avg_time = average_time_spent_on_page.get((d, p), 0)
         top_ref = top_referrer_per_page.get((d, p), "N/A")
-        lines.append(f"- {d}{p} — {c} views, avg time: {avg_time}s, top referrer: {top_ref}")
+        lines.append(f"- {d}{p} — {c} views, avg time: {avg_time:.1f}s, top referrer: {top_ref}")
     text = "\n".join(lines)
 
     # HTML version
     html_rows = "".join(
-        f"<tr><td>{d}</td><td>{p}</td><td style='text-align:right'>{c}</td><td style='text-align:right'>{average_time_spent_on_page.get((d, p), 0)}s</td><td>{top_referrer_per_page.get((d, p), "N/A")}</td></tr>"
+        f"<tr><td>{d}</td><td>{p}</td><td style='text-align:right'>{c}</td><td style='text-align:right'>{average_time_spent_on_page.get((d, p), 0):.1f}s</td><td>{top_referrer_per_page.get((d, p), "N/A")}</td></tr>"
         for (d, p), c in sorted_results
     )
     if not html_rows:
