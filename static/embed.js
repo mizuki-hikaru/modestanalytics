@@ -1,4 +1,4 @@
-(function () {
+(async function () {
   try {
     var scriptEl = document.currentScript;
     if (!scriptEl) {
@@ -12,14 +12,11 @@
     }
     if (!scriptEl) return;
 
-    var endpoint = 'https://modestanalytics.com/pageview';
-    var token = scriptEl.dataset.token || '';
-    if (!endpoint || !token) return;
-
-    // Generate a random 128-bit token (represented as ASCII) for pageview tracking
-    var viewId = Array.from(crypto.getRandomValues(new Uint8Array(16)))
-      .map(b => b.toString(16).padStart(2, '0'))
-      .join('');
+    var pageviewEndpoint = 'https://modestanalytics.com/pageview';
+    var heartbeatEndpoint = 'https://modestanalytics.com/heartbeat';
+    var userToken = scriptEl.dataset.token || '';
+    var pageviewToken = null;
+    if (!pageviewEndpoint || !heartbeatEndpoint || !userToken) return;
 
     function pathWithQuery(loc) {
       try {
@@ -32,19 +29,33 @@
     var startTime = Date.now(); // Record start time when script loads
     var initialReferrer = document.referrer || ''; // Record initial referrer, default to empty string
 
-    function sendPageview() {
-      var loc = window.location || {};
-      var domain = loc.hostname || '';
-      var path = pathWithQuery(loc);
-      var timeSpentOnPage = Math.round((Date.now() - startTime) / 1000); // Time in seconds, always a number
+    var loc = window.location || {};
+    var domain = loc.hostname || '';
+    var path = pathWithQuery(loc);
+
+    var params = new URLSearchParams();
+    params.append('token', userToken);
+    params.append('domain', domain);
+    params.append('path', path);
+    params.append('referrer', initialReferrer);
+
+    try {
+      const response = await fetch(pageviewEndpoint, {
+        method: 'POST',
+        body: params,
+        keepalive: true,
+      });
+      const data = await response.json();
+      pageviewToken = data.token || '';
+    } catch (_) {}
+
+    function sendHeartbeat() {
+      if (!pageviewToken) return;
+      const timeSpentOnPage = Math.floor((Date.now() - startTime) / 1000);
 
       var params = new URLSearchParams();
-      params.append('token', token);
-      params.append('domain', domain);
-      params.append('path', path);
-      params.append('referrer', initialReferrer);
+      params.append('token', pageviewToken);
       params.append('time_spent_on_page', timeSpentOnPage);
-      params.append('view_id', viewId);
 
       // Try to use sendBeacon first
       if (navigator.sendBeacon && navigator.sendBeacon(endpoint, params)) {
@@ -63,11 +74,8 @@
       }
     }
 
-    // Send initial pageview immediately
-    sendPageview();
-
-    // Send pageview data every 5 seconds
-    setInterval(sendPageview, 5000);
+    // Send heartbeat data every 5 seconds
+    setInterval(sendHeartbeat, 5000);
 
   } catch (_) {}
 })();

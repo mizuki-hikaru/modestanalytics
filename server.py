@@ -168,32 +168,39 @@ async def verify(req: VerifyRequest, db: Session = Depends(get_db)):
     return {"snippet": js_snippet, "token": user.token}
 
 @app.post("/pageview")
-async def record_pageview(
+async def pageview(
     token: Annotated[str, Form()],
     domain: Annotated[str, Form()],
     path: Annotated[str, Form()],
     referrer: Annotated[str, Form()],
-    time_spent_on_page: Annotated[int, Form()],
-    view_id: Annotated[str, Form()],
-    request: Request,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     user = db.query(User).filter(User.token == token).first()
     if not user:
         raise HTTPException(status_code=404, detail="Unknown token.")
+    pageview_token = secrets.token_urlsafe(16)
+    pv = Pageview(
+        user_id=user.id,
+        domain=domain.strip()[:255],
+        path=path.strip()[:512],
+        referrer=referrer.strip()[:1024],
+        time_spent_on_page=0,
+        token=pageview_token,
+    )
+    db.add(pv)
+    db.commit()
+    return {"token": pageview_token}
 
-    pv = db.query(Pageview).filter(Pageview.view_id == view_id, Pageview.user_id == user.id).first()
-    if pv:
-        pv.time_spent_on_page = time_spent_on_page
-    else:
-        pv = Pageview(
-            user_id=user.id,
-            domain=domain.strip()[:255],
-            path=path.strip()[:512],
-            referrer=referrer.strip()[:1024],
-            time_spent_on_page=time_spent_on_page,
-            view_id=view_id,
-        )
+@app.post("/heartbeat")
+async def heartbeat(
+    token: Annotated[str, Form()],
+    time_spent_on_page: Annotated[int, Form()],
+    db: Session = Depends(get_db),
+):
+    pv = db.query(Pageview).filter(Pageview.token == token).first()
+    if not pv:
+        raise HTTPException(status_code=404, detail="Pageview not found.")
+    pv.time_spent_on_page = time_spent_on_page
     db.add(pv)
     db.commit()
     return {"status": "ok"}

@@ -32,12 +32,12 @@ class Pageview(Base):
     __tablename__ = "pageviews"
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    token = Column(String, nullable=False)
     timestamp = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
     domain = Column(String, nullable=False)
     path = Column(String, nullable=False)
     referrer = Column(String, nullable=False)
     time_spent_on_page = Column(Integer, nullable=False)
-    view_id = Column(String, nullable=True)
 
     user = relationship("User", back_populates="pageviews")
 
