@@ -58,12 +58,12 @@
       params.append('time_spent_on_page', timeSpentOnPage);
 
       // Try to use sendBeacon first
-      if (navigator.sendBeacon && navigator.sendBeacon(endpoint, params)) {
+      if (navigator.sendBeacon && navigator.sendBeacon(heartbeatEndpoint, params)) {
         // Data successfully queued by sendBeacon
       } else {
         // sendBeacon not available or failed, use fetch as fallback
         try {
-          fetch(endpoint, {
+          fetch(heartbeatEndpoint, {
             method: 'POST',
             body: params,
             keepalive: true,
