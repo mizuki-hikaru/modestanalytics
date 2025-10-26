@@ -37,6 +37,7 @@ class Pageview(Base):
     path = Column(String, nullable=False)
     referrer = Column(String, nullable=False)
     time_spent_on_page = Column(Integer, nullable=False)
+    view_id = Column(String, nullable=True)
 
     user = relationship("User", back_populates="pageviews")
 

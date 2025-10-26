@@ -174,13 +174,26 @@ async def record_pageview(
     path: Annotated[str, Form()],
     referrer: Annotated[str, Form()],
     time_spent_on_page: Annotated[int, Form()],
+    view_id: Annotated[Optional[str], Form()] = None,
     request: Request,
     db: Session = Depends(get_db)
 ):
     user = db.query(User).filter(User.token == token).first()
     if not user:
         raise HTTPException(status_code=404, detail="Unknown token.")
-    pv = Pageview(user_id=user.id, domain=domain.strip()[:255], path=path.strip()[:512], referrer=referrer.strip()[:1024], time_spent_on_page=time_spent_on_page)
+
+    pv = db.query(Pageview).filter(Pageview.view_id == view_id, Pageview.user_id == user.id).first()
+    if pv:
+        pv.time_spent_on_page = time_spent_on_page
+    else:
+        pv = Pageview(
+            user_id=user.id,
+            domain=domain.strip()[:255],
+            path=path.strip()[:512],
+            referrer=referrer.strip()[:1024],
+            time_spent_on_page=time_spent_on_page,
+            view_id=view_id,
+        )
     db.add(pv)
     db.commit()
     return {"status": "ok"}

@@ -16,6 +16,11 @@
     var token = scriptEl.dataset.token || '';
     if (!endpoint || !token) return;
 
+    // Generate a random 128-bit token (represented as ASCII) for pageview tracking
+    var viewId = Array.from(crypto.getRandomValues(new Uint8Array(16)))
+      .map(b => b.toString(16).padStart(2, '0'))
+      .join('');
+
     function pathWithQuery(loc) {
       try {
         return (loc.pathname || '/') + (loc.search || '');
@@ -27,7 +32,7 @@
     var startTime = Date.now(); // Record start time when script loads
     var initialReferrer = document.referrer || ''; // Record initial referrer, default to empty string
 
-    function sendPageviewOnUnload() {
+    function sendPageview() {
       var loc = window.location || {};
       var domain = loc.hostname || '';
       var path = pathWithQuery(loc);
@@ -39,6 +44,7 @@
       params.append('path', path);
       params.append('referrer', initialReferrer);
       params.append('time_spent_on_page', timeSpentOnPage);
+      params.append('view_id', viewId);
 
       // Try to use sendBeacon first
       if (navigator.sendBeacon && navigator.sendBeacon(endpoint, params)) {
@@ -57,8 +63,11 @@
       }
     }
 
-    // Attach the event listener to send data when the page is about to be unloaded
-    window.addEventListener('beforeunload', sendPageviewOnUnload);
+    // Send initial pageview immediately
+    sendPageview();
+
+    // Send pageview data every 5 seconds
+    setInterval(sendPageview, 5000);
 
   } catch (_) {}
 })();
