@@ -1,9 +1,9 @@
 (async function () {
   try {
-    var scriptEl = document.currentScript;
+    let scriptEl = document.currentScript;
     if (!scriptEl) {
-      var scripts = document.getElementsByTagName('script');
-      for (var i = scripts.length - 1; i >= 0; i--) {
+      const scripts = document.getElementsByTagName('script');
+      for (let i = scripts.length - 1; i >= 0; i--) {
         if (scripts[i].src && /embed\.js(\?.*)?$/.test(scripts[i].src)) {
           scriptEl = scripts[i];
           break;
@@ -12,10 +12,10 @@
     }
     if (!scriptEl) return;
 
-    var pageviewEndpoint = 'https://modestanalytics.com/pageview';
-    var heartbeatEndpoint = 'https://modestanalytics.com/heartbeat';
-    var userToken = scriptEl.dataset.token || '';
-    var pageviewToken = null;
+    const pageviewEndpoint = 'https://modestanalytics.com/pageview';
+    const heartbeatEndpoint = 'https://modestanalytics.com/heartbeat';
+    const userToken = scriptEl.dataset.token || '';
+    let pageviewToken = null;
     if (!pageviewEndpoint || !heartbeatEndpoint || !userToken) return;
 
     function pathWithQuery(loc) {
@@ -26,14 +26,14 @@
       }
     }
 
-    var startTime = Date.now(); // Record start time when script loads
-    var initialReferrer = document.referrer || ''; // Record initial referrer, default to empty string
+    const startTime = Date.now(); // Record start time when script loads
+    const initialReferrer = document.referrer || ''; // Record initial referrer, default to empty string
 
-    var loc = window.location || {};
-    var domain = loc.hostname || '';
-    var path = pathWithQuery(loc);
+    const loc = window.location || {};
+    const domain = loc.hostname || '';
+    const path = pathWithQuery(loc);
 
-    var params = new URLSearchParams();
+    const params = new URLSearchParams();
     params.append('token', userToken);
     params.append('domain', domain);
     params.append('path', path);
@@ -53,7 +53,7 @@
       if (!pageviewToken) return;
       const timeSpentOnPage = Math.floor((Date.now() - startTime) / 1000);
 
-      var params = new URLSearchParams();
+      const params = new URLSearchParams();
       params.append('token', pageviewToken);
       params.append('time_spent_on_page', timeSpentOnPage);
 
