@@ -4,7 +4,7 @@
     if (!scriptEl) {
       const scripts = document.getElementsByTagName('script');
       for (let i = scripts.length - 1; i >= 0; i--) {
-        if (scripts[i].src && /embed\.js(\?.*)?$/.test(scripts[i].src)) {
+        if (scripts[i].src && /^https:\/\/modestanalytics.com\/embed\.js(\?.*)?$/.test(scripts[i].src)) {
           scriptEl = scripts[i];
           break;
         }
