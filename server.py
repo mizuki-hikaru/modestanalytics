@@ -6,8 +6,7 @@ from datetime import datetime, timedelta, timezone
 from email.message import EmailMessage
 from typing import Annotated, Optional
 
-from fastapi import FastAPI, Depends, Form, HTTPException, Request
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi import FastAPI, Depends, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, EmailStr
