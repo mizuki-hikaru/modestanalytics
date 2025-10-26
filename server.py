@@ -174,7 +174,7 @@ async def record_pageview(
     path: Annotated[str, Form()],
     referrer: Annotated[str, Form()],
     time_spent_on_page: Annotated[int, Form()],
-    view_id: Annotated[Optional[str], Form()] = None,
+    view_id: Annotated[str, Form()],
     request: Request,
     db: Session = Depends(get_db)
 ):
