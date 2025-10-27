@@ -164,7 +164,7 @@ async def verify(req: VerifyRequest, db: Session = Depends(get_db)):
         '<script src="https://modestanalytics.com/embed.js" '
         f'data-token="{user.token}"></script>'
     )
-    return {"snippet": js_snippet, "token": user.token}
+    return {"snippet": js_snippet}
 
 @app.post("/pageview")
 async def pageview(
