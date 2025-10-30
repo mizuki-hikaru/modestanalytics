@@ -1,5 +1,11 @@
 (async function () {
   try {
+    function isOptOut() {
+      return localStorage.getItem('analytics_opt_out') === "true";
+    }
+    if (isOptOut()) {
+      return;
+    }
     let scriptEl = document.currentScript;
     if (!scriptEl) {
       const scripts = document.getElementsByTagName('script');
@@ -51,6 +57,7 @@
 
     function sendHeartbeat() {
       if (!pageviewToken) return;
+      if (isOptOut()) return;
       const timeSpentOnPage = Math.floor((Date.now() - startTime) / 1000);
 
       const params = new URLSearchParams();

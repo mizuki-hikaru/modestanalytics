@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Modest Analytics</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; margin: 2rem; color: #444; }
+    .container { max-width: 640px; margin: 0 auto; }
+    h1 { font-size: 1.75rem; }
+    form { display: flex; gap: .5rem; margin-top: 1rem; }
+    input[type=email] { flex: 1; padding: .7rem .8rem; font-size: 1rem; }
+    button { padding: .7rem 1rem; font-size: 1rem; cursor: pointer; }
+    hr { border: 0; height: 1px; background: #ddd; margin: 1.2rem 0; }
+    a, a:visited { color: #007acc; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .modal {
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: rgba(255, 255, 255, 0.2);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      z-index: 50;
+    }
+    .modal.open { display: flex; }
+
+    .card {
+      background: white;
+      padding: 1.2rem;
+      border-radius: 12px;
+      width: min(560px, 92vw);
+      box-shadow: 0 10px 30px rgba(0,0,0,.15);
+    }
+
+    .row { display: flex; gap: .5rem; margin-top: .5rem; }
+    input[type=text], input[type=number] { width: 100%; padding: .6rem .7rem; font-size: 1rem; }
+    pre { background: #0f172a; color: #e2e8f0; padding: .8rem; border-radius: 8px; overflow: auto; }
+    .muted { color: #666; font-size: .9rem; }
+
+    /* Spinner */
+    .spinner {
+      display: inline-block;
+      border: 4px solid rgba(0,0,0,0.1);
+      border-top: 4px solid #3b82f6;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin-bottom: 1rem;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1><a href="index.html">Modest Analytics</a></h1>
+    <h2>Analytics Opt Out Bookmarklet</h2>
+    <p>
+      This opt-out bookmarklet is a small tool that tells the analytics
+      script not to count visits from your browser.
+    </p>
+    <p>
+      It's designed for site owners and developers who want to view and
+      test their site without inflating their own traffic numbers.
+    </p>
+    <p>
+      This applies only to your browser and only on your device &mdash;
+      it does not affect other visitors or disable analytics for anyone else.
+    </p>
+    <h3>Installation in Safari</h3>
+    <p>
+      To install the opt-out bookmarklet in Safari, follow these steps:
+    </p>
+    <ol>
+      <li>
+        Press ⌘D (Add Bookmark) on any page
+      </li>
+      <li>
+        Choose any folder
+      </li>
+      <li>
+        Name the bookmark "Analytics Opt Out"
+      </li>
+      <li>
+        Click "Add"
+      </li>
+      <li>
+        Click Bookmarks &rarr; Show Bookmarks
+      </li>
+      <li>
+        Find "Analytics Opt Out" in the list
+      </li>
+      <li>
+        Right-click "Analytics Opt Out" and select "Edit Address"
+      </li>
+      <li>
+        Copy the following code into the address field:
+      </li>
+    </ol>
+    <pre>javascript:(function(){localStorage.setItem('analytics_opt_out','true');alert('Analytics opt-out set for this site');})();</pre>
+    <h3>Usage</h3>
+    <p>
+      When you want to opt out of analytics, visit a page on your site and
+      click the bookmarklet. You will then be excluded from future analytics.
+    </p>
+  </div>
+</body>
+</html>
