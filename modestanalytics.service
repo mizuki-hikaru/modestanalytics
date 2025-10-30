@@ -1,0 +1,10 @@
+[Unit]
+Description=Modest Analytics
+
+[Service]
+ExecStart=%h/modestanalytics/env/bin/uvicorn server:app --reload --port 8001
+WorkingDirectory=%h/modestanalytics
+Restart=on-failure
+
+[Install]
+WantedBy=default.target
