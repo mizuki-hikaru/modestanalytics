@@ -192,6 +192,18 @@ async def pageview(
     db.commit()
     return {"token": pageview_token}
 
+@app.post("/pageview/delete")
+async def delete_pageview(
+    token: Annotated[str, Form()],
+    db: Session = Depends(get_db),
+):
+    pv = db.query(Pageview).filter(Pageview.token == token).first()
+    if not pv:
+        raise HTTPException(status_code=404, detail="Pageview not found.")
+    db.delete(pv)
+    db.commit()
+    return {"status": "ok"}
+
 @app.post("/heartbeat")
 async def heartbeat(
     token: Annotated[str, Form()],

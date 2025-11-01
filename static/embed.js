@@ -36,6 +36,7 @@ function analyticsOptOut() {
 
     const pageviewEndpoint = 'https://modestanalytics.com/pageview';
     const heartbeatEndpoint = 'https://modestanalytics.com/heartbeat';
+    const deletePageviewEndpoint = 'https://modestanalytics.com/pageview/delete';
     const userToken = scriptEl.dataset.token || '';
     let pageviewToken = null;
     if (!pageviewEndpoint || !heartbeatEndpoint || !userToken) return;
@@ -72,9 +73,26 @@ function analyticsOptOut() {
       pageviewToken = data.token || '';
     } catch (_) {}
 
-    function sendHeartbeat() {
+    let deleted = false;
+
+    async function sendHeartbeat() {
       if (!pageviewToken) return;
-      if (isOptOut()) return;
+      if (isOptOut()) {
+        if (!deleted) {
+          try {
+            const response = await fetch(deletePageviewEndpoint, {
+              method: 'POST',
+              body: new URLSearchParams({ token: pageviewToken }),
+              keepalive: true,
+            });
+            const data = await response.json();
+            if (data.status === 'ok') {
+              deleted = true;
+            }
+          } catch (_) {}
+        }
+        return;
+      }
       const timeSpentOnPage = Math.floor((Date.now() - startTime) / 1000);
 
       const params = new URLSearchParams();
