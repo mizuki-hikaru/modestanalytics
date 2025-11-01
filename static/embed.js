@@ -62,6 +62,17 @@ function analyticsOptOut() {
 
     const startTime = Date.now(); // Record start time when script loads
     const initialReferrer = document.referrer || ''; // Record initial referrer, default to empty string
+    let timeSpentOnPage = 0;
+    let lastActivityTime = Date.now(); // Initialize last activity time
+
+    // Update lastActivityTime on user interaction
+    function updateActivityTime() {
+      lastActivityTime = Date.now();
+    }
+
+    document.addEventListener('mousemove', updateActivityTime);
+    document.addEventListener('keydown', updateActivityTime);
+    document.addEventListener('scroll', updateActivityTime);
 
     const loc = window.location || {};
     const domain = loc.hostname;
@@ -85,11 +96,13 @@ function analyticsOptOut() {
       pageviewToken = data.token || '';
     } catch (_) {}
 
-    async function sendHeartbeat() {
+    function heartbeat() {
       if (!pageviewToken) return;
       if (isOptOut()) return;
 
-      const timeSpentOnPage = Math.floor((Date.now() - startTime) / 1000);
+      if (lastActivityTime > Date.now() - 30000) {
+        timeSpentOnPage += 4;
+      }
 
       const params = new URLSearchParams();
       params.append('token', pageviewToken);
@@ -112,8 +125,8 @@ function analyticsOptOut() {
       }
     }
 
-    // Send heartbeat data every 4 seconds
-    setInterval(sendHeartbeat, 4000);
+    // calculate and send heartbeat data every 4 seconds
+    setInterval(heartbeat, 4000);
 
   } catch (_) {}
 })();
