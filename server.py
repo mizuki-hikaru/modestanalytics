@@ -1,7 +1,6 @@
-import os
 import secrets
 import smtplib
-import ssl
+from html import escape
 from datetime import datetime, timedelta, timezone
 from email.message import EmailMessage
 from typing import Annotated, Optional
@@ -292,7 +291,7 @@ def build_digest(db: Session, user: User) -> tuple[str, str]:
 
     # HTML version
     html_rows = "".join(
-        f"<tr><td>{d}{p}</td><td style='text-align:right'>{c}</td><td style='text-align:right'>{average_time_spent_on_page.get((d, p), 0):.1f}s</td><td>{top_referrer_per_page.get((d, p), "N/A")}</td></tr>"
+        f"<tr><td>{escape(d)}{escape(p)}</td><td style='text-align:right'>{c}</td><td style='text-align:right'>{average_time_spent_on_page.get((d, p), 0):.1f}s</td><td>{escape(top_referrer_per_page.get((d, p), "N/A"))}</td></tr>"
         for (d, p), c in sorted_results
     )
     if not html_rows:
