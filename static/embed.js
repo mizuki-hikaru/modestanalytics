@@ -1,3 +1,7 @@
+let pageviewToken = null;
+const pageviewEndpoint = 'https://modestanalytics.com/pageview';
+const heartbeatEndpoint = 'https://modestanalytics.com/heartbeat';
+const deletePageviewEndpoint = 'https://modestanalytics.com/pageview/delete';
 function installAnalyticsSquare() {
   if (!document.getElementById('analyticsSquare')) {
     const square = document.createElement('div');
@@ -6,9 +10,20 @@ function installAnalyticsSquare() {
     document.body.appendChild(square);
   }
 }
+async function deletePageview() {
+  if (!pageviewToken) return;
+  try {
+    await fetch(deletePageviewEndpoint, {
+      method: 'POST',
+      body: new URLSearchParams({ token: pageviewToken }),
+      keepalive: true,
+    });
+  } catch (_) {}
+}
 function analyticsOptOut() {
   localStorage.setItem('analyticsOptOut', 'true');
   installAnalyticsSquare();
+  deletePageview();
   alert('Analytics opt-out set for this site.');
 }
 (async function () {
@@ -34,11 +49,7 @@ function analyticsOptOut() {
     }
     if (!scriptEl) return;
 
-    const pageviewEndpoint = 'https://modestanalytics.com/pageview';
-    const heartbeatEndpoint = 'https://modestanalytics.com/heartbeat';
-    const deletePageviewEndpoint = 'https://modestanalytics.com/pageview/delete';
     const userToken = scriptEl.dataset.token || '';
-    let pageviewToken = null;
     if (!pageviewEndpoint || !heartbeatEndpoint || !userToken) return;
 
     function pathWithQuery(loc) {
@@ -74,26 +85,10 @@ function analyticsOptOut() {
       pageviewToken = data.token || '';
     } catch (_) {}
 
-    let deleted = false;
-
     async function sendHeartbeat() {
       if (!pageviewToken) return;
-      if (isOptOut()) {
-        if (!deleted) {
-          try {
-            const response = await fetch(deletePageviewEndpoint, {
-              method: 'POST',
-              body: new URLSearchParams({ token: pageviewToken }),
-              keepalive: true,
-            });
-            const data = await response.json();
-            if (data.status === 'ok') {
-              deleted = true;
-            }
-          } catch (_) {}
-        }
-        return;
-      }
+      if (isOptOut()) return;
+
       const timeSpentOnPage = Math.floor((Date.now() - startTime) / 1000);
 
       const params = new URLSearchParams();
