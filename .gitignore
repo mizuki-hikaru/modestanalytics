@@ -1,3 +1,4 @@
 env
 __pycache__
 analytics.db
+.DS_Store

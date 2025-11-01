@@ -1,9 +1,23 @@
+function installAnalyticsSquare() {
+  if (!document.getElementById('analyticsSquare')) {
+    const square = document.createElement('div');
+    square.id = 'analyticsSquare';
+    square.style = 'position: fixed; top: 0; left: 0; width: 1em; height: 1em; background-color: rgba(0, 0, 0, 0.5); z-index: 1000000;';
+    document.body.appendChild(square);
+  }
+}
+function analyticsOptOut() {
+  localStorage.setItem('analyticsOptOut', 'true');
+  installAnalyticsSquare();
+  alert('Analytics opt-out set for this site.');
+}
 (async function () {
   try {
     function isOptOut() {
-      return localStorage.getItem('analytics_opt_out') === "true";
+      return localStorage.getItem('analyticsOptOut') === "true";
     }
     if (isOptOut()) {
+      installAnalyticsSquare();
       return;
     }
     let scriptEl = document.currentScript;
@@ -36,13 +50,14 @@
     const initialReferrer = document.referrer || ''; // Record initial referrer, default to empty string
 
     const loc = window.location || {};
-    const domain = loc.hostname || '';
+    const domain = loc.hostname;
     const path = pathWithQuery(loc);
+
+    if (!domain) return;
 
     const params = new URLSearchParams();
     params.append('token', userToken);
-    params.append('domain', domain);
-    params.append('path', path);
+    params.append('url', domain + path);
     params.append('referrer', initialReferrer);
 
     try {
@@ -81,8 +96,8 @@
       }
     }
 
-    // Send heartbeat data every 5 seconds
-    setInterval(sendHeartbeat, 5000);
+    // Send heartbeat data every 4 seconds
+    setInterval(sendHeartbeat, 4000);
 
   } catch (_) {}
 })();

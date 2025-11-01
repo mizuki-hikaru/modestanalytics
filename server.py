@@ -177,6 +177,8 @@ async def pageview(
     user = db.query(User).filter(User.token == token).first()
     if not user:
         raise HTTPException(status_code=404, detail="Unknown token.")
+    if not domain or not path:
+        raise HTTPException(status_code=400, detail="Domain and path are required.")
     pageview_token = secrets.token_urlsafe(16)
     pv = Pageview(
         user_id=user.id,
@@ -240,10 +242,9 @@ def build_digest(db: Session, user: User) -> tuple[str, str]:
         key = (d or "", p or "")
         counts[key] = counts.get(key, 0) + 1
 
-        if r:
-            if key not in referrer_per_page:
-                referrer_per_page[key] = {}
-            referrer_per_page[key][r] = referrer_per_page[key].get(r, 0) + 1
+        if key not in referrer_per_page:
+            referrer_per_page[key] = {}
+        referrer_per_page[key][r] = referrer_per_page[key].get(r, 0) + 1
 
         if key not in time_spent_on_page_totals:
             time_spent_on_page_totals[key] = []
@@ -279,18 +280,18 @@ def build_digest(db: Session, user: User) -> tuple[str, str]:
 
     # HTML version
     html_rows = "".join(
-        f"<tr><td>{d}</td><td>{p}</td><td style='text-align:right'>{c}</td><td style='text-align:right'>{average_time_spent_on_page.get((d, p), 0):.1f}s</td><td>{top_referrer_per_page.get((d, p), "N/A")}</td></tr>"
+        f"<tr><td>{d}{p}</td><td style='text-align:right'>{c}</td><td style='text-align:right'>{average_time_spent_on_page.get((d, p), 0):.1f}s</td><td>{top_referrer_per_page.get((d, p), "N/A")}</td></tr>"
         for (d, p), c in sorted_results
     )
     if not html_rows:
-        html_rows = "<tr><td colspan='5'>No data in the last 7 days</td></tr>"
+        html_rows = "<tr><td colspan='4'>No data in the last 7 days</td></tr>"
 
     html = f"""
     <h2>Your weekly website stats</h2>
     <p><strong>Period:</strong> {period_str}</p>
     <p><strong>Total pageviews (last 7 days):</strong> {total}</p>
     <table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse">
-      <thead><tr><th>Domain</th><th>Path</th><th>Views</th><th>Avg. Time</th><th>Top Referrer</th></tr></thead>
+      <thead><tr><th>URL</th><th>Views</th><th>Avg. Time</th><th>Top Referrer</th></tr></thead>
       <tbody>{html_rows}</tbody>
     </table>
     """
