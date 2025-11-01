@@ -60,7 +60,8 @@ function analyticsOptOut() {
 
     const params = new URLSearchParams();
     params.append('token', userToken);
-    params.append('url', domain + path);
+    params.append('domain', domain);
+    params.append('path', path);
     params.append('referrer', initialReferrer);
 
     try {
