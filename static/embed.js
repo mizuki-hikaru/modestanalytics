@@ -17,7 +17,9 @@ function analyticsOptOut() {
       return localStorage.getItem('analyticsOptOut') === "true";
     }
     if (isOptOut()) {
-      installAnalyticsSquare();
+      document.addEventListener('DOMContentLoaded', function () {
+        installAnalyticsSquare();
+      });
       return;
     }
     let scriptEl = document.currentScript;
